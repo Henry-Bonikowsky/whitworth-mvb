@@ -32,7 +32,8 @@
   .muted { color:var(--mut); }
   #msg { padding:10px 14px; border-radius:6px; margin-bottom:12px; background:#fde8eb; color:var(--cr); font-weight:600; }
   #msg.ok { background:#e6f4ea; color:#1d7a3a; }
-  .thumbs { display:flex; flex-wrap:wrap; gap:8px; }
+  .thumbs { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .thumbs.wide { grid-column:1/-1; }
   .thumbs figure { display:grid; gap:4px; }
   .thumbs img { width:110px; height:74px; object-fit:cover; border-radius:6px; }
 </style>
@@ -63,17 +64,16 @@ const send = (path, method, data) => api(path, { method, headers: { 'content-typ
 
 // [field, label, input type | options, required]
 const TABS = {
-  games: { label: 'Games', fields: [['date', 'Date', 'date', 1], ['time', 'Time', 'time'], ['opponent', 'Opponent', 'text', 1], ['location', 'Location', 'text'], ['home_away', 'Home / away', ['home', 'away', 'neutral'], 1], ['our_score', 'Our score (blank if not played)', 'number'], ['their_score', 'Their score', 'number'], ['notes', 'Notes', 'textarea']],
-    show: (g) => [`${g.date}${g.time ? ' ' + g.time : ''} - ${g.home_away === 'away' ? '@' : 'vs'} ${g.opponent}`, [g.our_score != null ? `Final ${g.our_score}-${g.their_score}` : 'Upcoming', g.location, g.photos.length ? g.photos.length + ' photos' : ''].filter(Boolean).join(' · ')] },
-  roster: { label: 'Roster', fields: [['name', 'Name', 'text', 1], ['number', 'Number', 'text'], ['position', 'Position', 'text'], ['year', 'Year', 'text'], ['sort', 'Sort order (low first)', 'number']],
+  games: { label: 'Games', photos: 'many', fields: [['date', 'Date', 'date', 1], ['time', 'Time', 'time'], ['opponent', 'Opponent', 'text', 1], ['location', 'Location', 'text'], ['home_away', 'Home / away', ['home', 'away', 'neutral'], 1], ['our_score', 'Our score (blank if not played)', 'number'], ['their_score', 'Their score', 'number'], ['notes', 'Notes', 'textarea']],
+    show: (g) => [`${g.date}${g.time ? ' ' + g.time : ''} - ${g.home_away === 'away' ? '@' : 'vs'} ${g.opponent}`, [g.our_score != null ? `Final ${g.our_score}-${g.their_score}` : 'Upcoming', g.location].filter(Boolean).join(' · ')] },
+  roster: { label: 'Roster', photos: 'one', fields: [['name', 'Name', 'text', 1], ['number', 'Number', 'text'], ['position', 'Position', 'text'], ['year', 'Year', 'text'], ['sort', 'Sort order (low first)', 'number']],
     show: (p) => [`${p.number ? '#' + p.number + ' ' : ''}${p.name}`, [p.position, p.year, 'sort ' + p.sort].filter(Boolean).join(' · ')] },
-  announcements: { label: 'Announcements', fields: [['date', 'Date', 'date', 1], ['title', 'Title', 'text', 1], ['body', 'Text', 'textarea']],
+  announcements: { label: 'Announcements', photos: 'many', fields: [['date', 'Date', 'date', 1], ['title', 'Title', 'text', 1], ['body', 'Text', 'textarea']],
     show: (a) => [`${a.date} - ${a.title}`, a.body] },
-  officers: { label: 'Officers', pk: 'email', fields: [['email', 'Email (their Access login)', 'email', 1], ['name', 'Name', 'text', 1], ['title', 'Title (e.g. President) - leave empty to hide from the public site', 'text'], ['role', 'Role', ['editor', 'admin'], 1]],
+  officers: { label: 'Officers', pk: 'email', photos: 'one', fields: [['email', 'Email (their Access login)', 'email', 1], ['name', 'Name', 'text', 1], ['title', 'Title (e.g. President) - leave empty to hide from the public site', 'text'], ['role', 'Role', ['editor', 'admin'], 1]],
     show: (o) => [`${o.name}${o.title ? ' - ' + o.title : ''}`, `${o.email} · ${o.role}`] },
 };
 let tab = 'games', editing = null, rows = [];
-const openPhotos = new Set();
 
 function tabs(me) {
   $('tabs').replaceChildren(...Object.entries(TABS).filter(([k]) => k !== 'officers' || me.role === 'admin')
@@ -88,14 +88,21 @@ function form() {
     Object.assign(input, { name: k, required: !!req }, Array.isArray(type) && row[k] == null ? {} : { value: row[k] ?? (k === 'date' ? new Date().toLocaleDateString('en-CA') : '') });
     if (editing && k === t.pk) input.disabled = true;
     return el('label', { className: type === 'textarea' ? 'wide' : '' }, label + (req ? ' *' : ''), input);
-  }), el('div', { className: 'acts' }, el('button', { className: 'primary', textContent: editing ? 'Save changes' : 'Add' }), editing ? btn('Cancel', () => { editing = null; form(); }) : ''));
+  }), ...photoFields(t, row), el('div', { className: 'acts' }, el('button', { className: 'primary', textContent: editing ? 'Save changes' : 'Add' }), editing ? btn('Cancel', () => { editing = null; form(); }) : ''));
   f.hidden = false;
   f.onsubmit = async (e) => {
     e.preventDefault();
-    const data = Object.fromEntries(new FormData(f));
+    const fd = new FormData(f), files = fd.getAll('files').filter((x) => x.size);
+    fd.delete('files');
     try {
-      if (editing) await send(`${tab}/${encodeURIComponent(editing[t.pk || 'id'])}`, 'PUT', data);
-      else await send(tab, 'POST', data);
+      const saved = editing ? await send(`${tab}/${encodeURIComponent(editing[t.pk || 'id'])}`, 'PUT', Object.fromEntries(fd))
+        : await send(tab, 'POST', Object.fromEntries(fd));
+      const id = encodeURIComponent(saved[t.pk || 'id']);
+      for (const [i, file] of files.entries()) {
+        say(`Uploading photo ${i + 1} of ${files.length}...`, true);
+        try { await api(`${tab}/${id}/photos`, { method: 'POST', headers: { 'content-type': 'image/jpeg' }, body: await shrink(file) }); }
+        catch (err) { editing = null; await load(); return say(`Saved, but ${file.name} failed: ${err.message}`); }
+      }
       say(editing ? 'Saved.' : 'Added.', true);
       editing = null;
       await load();
@@ -103,25 +110,17 @@ function form() {
   };
 }
 
-function photos(g) {
-  const input = el('input', { type: 'file', accept: 'image/*', multiple: true });
-  input.onchange = async () => {
-    const files = [...input.files];
-    for (const [i, file] of files.entries()) {
-      say(`Uploading photo ${i + 1} of ${files.length}...`, true);
-      try { await api(`games/${g.id}/photos`, { method: 'POST', headers: { 'content-type': 'image/jpeg' }, body: await shrink(file) }); }
-      catch (err) { say(`${file.name}: ${err.message}`); return load(); }
-    }
-    say(`Uploaded ${files.length} photo(s).`, true);
-    load();
-  };
-  const act = (fn) => async () => { try { await fn(); await load(); } catch (err) { say(err.message); } };
-  return el('div', { className: 'row' }, el('label', {}, 'Add photos (resized automatically)', input),
-    el('div', { className: 'thumbs' }, ...g.photos.map((p, i) => el('figure', {}, el('img', { src: p.url, alt: `Photo ${i + 1}`, loading: 'lazy' }),
-      el('div', { className: 'acts' },
-        btn('↑', act(() => send(`photos/${p.id}/move`, 'POST', { dir: -1 }))),
-        btn('↓', act(() => send(`photos/${p.id}/move`, 'POST', { dir: 1 }))),
-        btn('✕', act(async () => { if (confirm('Delete this photo?')) await send(`photos/${p.id}`, 'DELETE'); })))))));
+// Photo picker for the form, plus the entry's current photos (reorder/delete) when editing.
+function photoFields(t, row) {
+  const many = t.photos === 'many', have = row.photos || [];
+  const input = el('input', { type: 'file', name: 'files', accept: 'image/*', multiple: many });
+  const label = el('label', { className: 'wide' }, many ? 'Add photos (resized automatically)' : have.length ? 'Replace photo' : 'Photo (resized automatically)', input);
+  if (!have.length) return [label];
+  const act = (fn) => async () => { try { await fn(); await load(); editing = rows.find((r) => r[t.pk || 'id'] === row[t.pk || 'id']) || null; form(); } catch (err) { say(err.message); } };
+  return [label, el('div', { className: 'thumbs wide' }, ...have.map((p, i) => el('figure', {}, el('img', { src: p.url, alt: `Photo ${i + 1}`, loading: 'lazy' }),
+    el('div', { className: 'acts' },
+      ...(many ? [btn('↑', act(() => send(`photos/${p.id}/move`, 'POST', { dir: -1 }))), btn('↓', act(() => send(`photos/${p.id}/move`, 'POST', { dir: 1 })))] : []),
+      btn('✕', act(async () => { if (confirm('Delete this photo?')) await send(`photos/${p.id}`, 'DELETE'); }))))))];
 }
 
 // Resize to max 1600px long edge, JPEG q0.82.
@@ -144,12 +143,12 @@ async function load() {
     const acts = el('div', { className: 'acts' },
       btn('Edit', () => { editing = r; form(); $('form').scrollIntoView(); }),
       btn('Delete', async () => {
-        if (!confirm(`Delete "${title}"?` + (tab === 'games' && r.photos.length ? ' Its photos are deleted too.' : ''))) return;
+        if (!confirm(`Delete "${title}"?` + (r.photos.length ? ' Its photos are deleted too.' : ''))) return;
         try { await send(`${tab}/${encodeURIComponent(id)}`, 'DELETE'); say('Deleted.', true); load(); } catch (err) { say(err.message); }
       }));
-    if (tab === 'games') acts.append(btn(openPhotos.has(id) ? 'Hide photos' : 'Photos', () => { openPhotos.has(id) ? openPhotos.delete(id) : openPhotos.add(id); load(); }));
-    return el('div', { className: 'row' }, el('strong', { textContent: title }), el('div', { className: 'muted', textContent: sub }), acts,
-      tab === 'games' && openPhotos.has(id) ? photos(r) : '');
+    const n = r.photos.length;
+    return el('div', { className: 'row' }, el('strong', { textContent: title }), el('div', { className: 'muted', textContent: sub }),
+      n ? el('div', { className: 'thumbs' }, el('img', { src: r.photos[0].url, alt: '', loading: 'lazy' }), n > 1 ? el('span', { className: 'muted', textContent: `+${n - 1} more` }) : '') : '', acts);
   }));
 }
 

@@ -31,11 +31,12 @@ CREATE TABLE IF NOT EXISTS announcements (
   body  TEXT NOT NULL DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS photos (
-  id      INTEGER PRIMARY KEY,
-  game_id INTEGER NOT NULL REFERENCES games(id),
-  key     TEXT NOT NULL UNIQUE,         -- R2 object key
-  sort    INTEGER NOT NULL DEFAULT 0
+  id   INTEGER PRIMARY KEY,
+  kind TEXT NOT NULL CHECK (kind IN ('games', 'roster', 'announcements', 'officers')),
+  ref  TEXT NOT NULL,                   -- the entry's id (officers: email)
+  key  TEXT NOT NULL UNIQUE,            -- R2 object key
+  sort INTEGER NOT NULL DEFAULT 0
 );
-CREATE INDEX IF NOT EXISTS photos_game ON photos (game_id, sort);
+CREATE INDEX IF NOT EXISTS photos_ref ON photos (kind, ref, sort);
 
 INSERT OR IGNORE INTO officers (email, name, title, role) VALUES ('henrybonikowsky@gmail.com', 'Henry Bonikowsky', '', 'admin');

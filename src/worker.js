@@ -6,10 +6,10 @@ const fail = (status, message) => { throw Object.assign(new Error(message), { st
 
 // Editable tables. Field types: 'x!' = required. str | date | time | int (>=0 or null) | sort (int, default 0) | email | [enum].
 const T = {
-  games: { f: { date: 'date!', time: 'time', opponent: 'str!', location: 'str', home_away: ['home', 'away', 'neutral'], our_score: 'int', their_score: 'int', notes: 'str' }, order: 'date DESC, time DESC' },
-  roster: { f: { name: 'str!', number: 'str', position: 'str', year: 'str', sort: 'sort' }, order: 'sort, name' },
-  announcements: { f: { date: 'date!', title: 'str!', body: 'str' }, order: 'date DESC, id DESC' },
-  officers: { pk: 'email', admin: true, f: { email: 'email!', name: 'str!', title: 'str', role: ['admin', 'editor'] }, order: 'role, name' },
+  games: { photos: 'many', f: { date: 'date!', time: 'time', opponent: 'str!', location: 'str', home_away: ['home', 'away', 'neutral'], our_score: 'int', their_score: 'int', notes: 'str' }, order: 'date DESC, time DESC' },
+  roster: { photos: 'one', f: { name: 'str!', number: 'str', position: 'str', year: 'str', sort: 'sort' }, order: 'sort, name' },
+  announcements: { photos: 'many', f: { date: 'date!', title: 'str!', body: 'str' }, order: 'date DESC, id DESC' },
+  officers: { pk: 'email', admin: true, photos: 'one', f: { email: 'email!', name: 'str!', title: 'str', role: ['admin', 'editor'] }, order: 'role, name' },
 };
 
 export function clean(f, b) {
@@ -89,15 +89,18 @@ async function officer(req, env) {
 
 async function publicData(env) {
   const q = (sql) => env.DB.prepare(sql);
+  // First photo of a one-photo entry, as a URL (officer emails never leave the DB).
+  const first = (t, ref) => `(SELECT '/photos/' || key FROM photos WHERE kind = '${t}' AND ref = ${ref} ORDER BY sort, id LIMIT 1) AS photo`;
   const [up, res, roster, ann, off, ph] = (await env.DB.batch([
     q('SELECT * FROM games WHERE our_score IS NULL ORDER BY date, time'),
     q('SELECT * FROM games WHERE our_score IS NOT NULL ORDER BY date DESC, time DESC'),
-    q(`SELECT * FROM roster ORDER BY ${T.roster.order}`),
+    q(`SELECT *, ${first('roster', 'CAST(roster.id AS TEXT)')} FROM roster ORDER BY ${T.roster.order}`),
     q(`SELECT * FROM announcements ORDER BY ${T.announcements.order} LIMIT 10`),
-    q("SELECT name, title FROM officers WHERE title != '' ORDER BY role, name"),
-    q('SELECT game_id, key FROM photos ORDER BY sort, id'),
+    q(`SELECT name, title, ${first('officers', 'officers.email')} FROM officers WHERE title != '' ORDER BY role, name`),
+    q("SELECT kind, ref, key FROM photos WHERE kind IN ('games', 'announcements') ORDER BY sort, id"),
   ])).map((r) => r.results);
-  for (const g of res) g.photos = ph.filter((p) => p.game_id === g.id).map((p) => `/photos/${p.key}`);
+  const attach = (kind, rows) => { for (const r of rows) r.photos = ph.filter((p) => p.kind === kind && p.ref === String(r.id)).map((p) => `/photos/${p.key}`); };
+  attach('games', up); attach('games', res); attach('announcements', ann);
   return { upcoming: up, results: res, roster, announcements: ann, officers: off };
 }
 
@@ -110,22 +113,34 @@ async function photo(env, key) {
 }
 
 const MAX = 5 * 1024 * 1024;
-async function upload(req, env, gid) {
+async function upload(req, env, t, id) {
   const type = (req.headers.get('content-type') || '').split(';')[0].trim();
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(type)) fail(415, 'Only JPEG, PNG or WebP images');
   if (Number(req.headers.get('content-length')) > MAX) fail(413, 'Image over 5 MB');
-  if (!(await env.DB.prepare('SELECT 1 FROM games WHERE id = ?').bind(gid).first())) fail(404, 'Game not found');
+  const pk = T[t].pk || 'id', ref = String(id);
+  if (!(await env.DB.prepare(`SELECT 1 FROM ${t} WHERE ${pk} = ?`).bind(id).first())) fail(404, 'Not found');
   const buf = await req.arrayBuffer();
   if (!buf.byteLength) fail(400, 'Empty image');
   if (buf.byteLength > MAX) fail(413, 'Image over 5 MB');
-  const key = `games/${gid}/${crypto.randomUUID()}.jpg`;
+  const key = `${t}/${crypto.randomUUID()}.jpg`; // random name only: never put an officer email in a public URL
   await env.PHOTOS.put(key, buf, { httpMetadata: { contentType: type } });
+  let row;
   try {
-    return json(await env.DB.prepare('INSERT INTO photos (game_id, key, sort) VALUES (?1, ?2, (SELECT COALESCE(MAX(sort), -1) + 1 FROM photos WHERE game_id = ?1)) RETURNING *').bind(gid, key).first(), 201);
+    row = await env.DB.prepare('INSERT INTO photos (kind, ref, key, sort) VALUES (?1, ?2, ?3, (SELECT COALESCE(MAX(sort), -1) + 1 FROM photos WHERE kind = ?1 AND ref = ?2)) RETURNING *').bind(t, ref, key).first();
   } catch (e) {
     await env.PHOTOS.delete(key);
     throw e;
   }
+  if (T[t].photos === 'one') await dropPhotos(env, t, ref, row.id); // new headshot replaces the old one
+  return json(row, 201);
+}
+
+// Delete an entry's photos (R2 objects + rows), optionally keeping one.
+async function dropPhotos(env, t, ref, keep = 0) {
+  const old = (await env.DB.prepare('SELECT key FROM photos WHERE kind = ? AND ref = ? AND id != ?').bind(t, ref, keep).all()).results.map((r) => r.key);
+  if (!old.length) return;
+  await env.PHOTOS.delete(old);
+  await env.DB.prepare('DELETE FROM photos WHERE kind = ? AND ref = ? AND id != ?').bind(t, ref, keep).run();
 }
 
 async function body(req) {
@@ -133,9 +148,10 @@ async function body(req) {
   try { return await req.json(); } catch { fail(400, 'Invalid JSON'); }
 }
 
-async function photoOp(req, env, id, sub) {
+async function photoOp(req, env, me, id, sub) {
   const p = await env.DB.prepare('SELECT * FROM photos WHERE id = ?').bind(id).first();
   if (!p) fail(404, 'Photo not found');
+  if (T[p.kind].admin && me.role !== 'admin') fail(403, 'Admins only');
   if (req.method === 'DELETE' && !sub) {
     await env.PHOTOS.delete(p.key);
     await env.DB.prepare('DELETE FROM photos WHERE id = ?').bind(id).run();
@@ -144,7 +160,7 @@ async function photoOp(req, env, id, sub) {
   if (req.method === 'POST' && sub === 'move') {
     const { dir } = await body(req);
     if (dir !== -1 && dir !== 1) fail(400, 'dir must be -1 or 1');
-    const all = (await env.DB.prepare('SELECT id FROM photos WHERE game_id = ? ORDER BY sort, id').bind(p.game_id).all()).results.map((r) => r.id);
+    const all = (await env.DB.prepare('SELECT id FROM photos WHERE kind = ? AND ref = ? ORDER BY sort, id').bind(p.kind, p.ref).all()).results.map((r) => r.id);
     const i = all.indexOf(p.id), j = i + dir;
     if (j >= 0 && j < all.length) [all[i], all[j]] = [all[j], all[i]];
     await env.DB.batch(all.map((pid, n) => env.DB.prepare('UPDATE photos SET sort = ? WHERE id = ?').bind(n, pid)));
@@ -157,10 +173,8 @@ async function crud(req, env, t, id) {
   const s = T[t], pk = s.pk || 'id', db = env.DB, m = req.method;
   if (m === 'GET' && !id) {
     const rows = (await db.prepare(`SELECT * FROM ${t} ORDER BY ${s.order}`).all()).results;
-    if (t === 'games') {
-      const ph = (await db.prepare('SELECT * FROM photos ORDER BY sort, id').all()).results;
-      for (const g of rows) g.photos = ph.filter((p) => p.game_id === g.id).map((p) => ({ ...p, url: `/photos/${p.key}` }));
-    }
+    const ph = (await db.prepare('SELECT * FROM photos WHERE kind = ? ORDER BY sort, id').bind(t).all()).results;
+    for (const r of rows) r.photos = ph.filter((p) => p.ref === String(r[pk])).map((p) => ({ ...p, url: `/photos/${p.key}` }));
     return json(rows);
   }
   if (m === 'POST' && !id) {
@@ -182,14 +196,11 @@ async function crud(req, env, t, id) {
     const row = await db.prepare(`UPDATE ${t} SET ${sets} WHERE ${pk} = ?${guard} RETURNING *`).bind(...args).first();
     if (row) return json(row);
   } else if (m === 'DELETE') {
-    if (t === 'games') {
-      const keys = (await db.prepare('SELECT key FROM photos WHERE game_id = ?').bind(id).all()).results.map((r) => r.key);
-      if (keys.length) await env.PHOTOS.delete(keys);
-      const [, g] = await db.batch([db.prepare('DELETE FROM photos WHERE game_id = ?').bind(id), db.prepare('DELETE FROM games WHERE id = ?').bind(id)]);
-      if (g.meta.changes) return json({ ok: true });
-    } else {
-      const guard = t === 'officers' ? ` AND (role != 'admin' OR (SELECT COUNT(*) FROM officers WHERE role = 'admin') > 1)` : '';
-      if ((await db.prepare(`DELETE FROM ${t} WHERE ${pk} = ?${guard}`).bind(id).run()).meta.changes) return json({ ok: true });
+    // Delete the entry first (the last-admin guard may refuse), then its photos.
+    const guard = t === 'officers' ? ` AND (role != 'admin' OR (SELECT COUNT(*) FROM officers WHERE role = 'admin') > 1)` : '';
+    if ((await db.prepare(`DELETE FROM ${t} WHERE ${pk} = ?${guard}`).bind(id).run()).meta.changes) {
+      await dropPhotos(env, t, String(id));
+      return json({ ok: true });
     }
   } else fail(405, 'Method not allowed');
   if (t === 'officers' && (await db.prepare('SELECT 1 FROM officers WHERE email = ?').bind(id).first())) fail(409, 'There must always be at least one admin');
@@ -213,11 +224,10 @@ async function route(req, env) {
   if (id && t !== 'officers') { if (!/^\d+$/.test(id)) fail(404, 'Not found'); id = Number(id); }
   if (id && t === 'officers') id = id.toLowerCase();
   if (t === 'me' && !id) return json(me);
-  if (t === 'photos' && id) return photoOp(req, env, id, sub);
-  if (t === 'games' && id && sub === 'photos' && req.method === 'POST') return upload(req, env, id);
-  if (!T[t] || sub !== undefined) fail(404, 'Not found');
+  if (t === 'photos' && id) return photoOp(req, env, me, id, sub);
+  if (!T[t] || (sub !== undefined && !(sub === 'photos' && id && req.method === 'POST'))) fail(404, 'Not found');
   if (T[t].admin && me.role !== 'admin') fail(403, 'Admins only');
-  return crud(req, env, t, id);
+  return sub ? upload(req, env, t, id) : crud(req, env, t, id);
 }
 
 export default {

@@ -26,6 +26,7 @@
   .list { display:grid; gap:12px; }
   .card { background:var(--card); padding:20px; border-radius:10px; min-width:0; overflow-wrap:anywhere; }
   .card b { display:block; font-size:22px; }
+  .head { width:96px; height:96px; border-radius:50%; object-fit:cover; display:block; margin-bottom:10px; background:#eee; }
   .body { white-space:pre-line; margin-top:6px; }
   .muted { color:var(--mut); }
   .badge { display:inline-block; min-width:28px; text-align:center; padding:0 8px; border-radius:4px; color:var(--wh); background:var(--mut); font-weight:800; margin-right:8px; }
@@ -95,12 +96,20 @@ function slideshow(urls, label) {
 fetch('/api/public').then((r) => r.json()).then((d) => {
   if (d.announcements.length) {
     document.getElementById('news').hidden = document.querySelector('nav a[href="#news"]').hidden = false;
-    fill('news', d.announcements, (a) => el('div', 'card', null, el('b', '', a.title), el('div', 'muted', day(a.date)), el('div', 'body', a.body)));
+    fill('news', d.announcements, (a) => {
+      const c = el('div', 'card', null, el('b', '', a.title), el('div', 'muted', day(a.date)), el('div', 'body', a.body));
+      if (a.photos.length) c.append(slideshow(a.photos, a.title));
+      return c;
+    });
   }
-  fill('schedule', d.upcoming, (g) => el('div', 'card', null,
-    el('b', '', (g.home_away === 'away' ? '@ ' : 'vs ') + g.opponent),
-    el('div', '', [day(g.date), clock(g.time)].filter(Boolean).join(' · ')),
-    el('div', 'muted', where(g)), el('div', 'body muted', g.notes)));
+  fill('schedule', d.upcoming, (g) => {
+    const c = el('div', 'card', null,
+      el('b', '', (g.home_away === 'away' ? '@ ' : 'vs ') + g.opponent),
+      el('div', '', [day(g.date), clock(g.time)].filter(Boolean).join(' · ')),
+      el('div', 'muted', where(g)), el('div', 'body muted', g.notes));
+    if (g.photos.length) c.append(slideshow(g.photos, `vs ${g.opponent}`));
+    return c;
+  });
   fill('results', d.results, (g) => {
     const r = g.our_score > g.their_score ? 'W' : g.our_score < g.their_score ? 'L' : 'T';
     const c = el('div', 'card', null,
@@ -109,8 +118,9 @@ fetch('/api/public').then((r) => r.json()).then((d) => {
     if (g.photos.length) c.append(slideshow(g.photos, `vs ${g.opponent}`));
     return c;
   });
-  fill('roster', d.roster, (p) => el('div', 'card', null, el('b', '', (p.number ? '#' + p.number + ' ' : '') + p.name), el('div', 'muted', [p.position, p.year].filter(Boolean).join(' · '))));
-  fill('officers', d.officers, (o) => el('div', 'card', null, el('b', '', o.name), el('div', 'muted', o.title)));
+  const head = (url, name) => { if (!url) return ''; const i = el('img', 'head'); i.src = url; i.alt = name; i.loading = 'lazy'; return i; };
+  fill('roster', d.roster, (p) => el('div', 'card', null, head(p.photo, p.name), el('b', '', (p.number ? '#' + p.number + ' ' : '') + p.name), el('div', 'muted', [p.position, p.year].filter(Boolean).join(' · '))));
+  fill('officers', d.officers, (o) => el('div', 'card', null, head(o.photo, o.name), el('b', '', o.name), el('div', 'muted', o.title)));
 }).catch(() => {});
 </script>
 </body>

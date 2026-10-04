@@ -5,10 +5,11 @@ Cloudflare Worker + static assets. Officers edit content at `/admin`; no build s
 ## Layout
 - `public/` - static site served as Worker assets. `index.html` renders from `GET /api/public`; `admin.html` is the officer CMS.
 - `src/worker.js` - API. Routes:
-  - `GET /api/public` - upcoming games (no score), results (scored, with photo URLs), roster, announcements (10), officers (name+title only).
+  - `GET /api/public` - upcoming games + results (scored) and announcements (10), each with `photos` URLs; roster and officers (name+title, only officers with a title) with one `photo` URL.
   - `GET /photos/<key>` - streams from R2, 1-year immutable cache.
   - `/api/admin/*` - `me`; CRUD `games|roster|announcements|officers` (`GET`/`POST` on the collection, `PUT`/`DELETE` on `/:id`, officers keyed by email);
-    `POST games/:id/photos` (raw image body, jpeg/png/webp, max 5 MB); `DELETE photos/:id`; `POST photos/:id/move {dir:-1|1}`.
+    `POST <table>/:id/photos` for every table (raw image body, jpeg/png/webp, max 5 MB; roster/officers keep one photo, a new upload replaces it);
+    `DELETE photos/:id`; `POST photos/:id/move {dir:-1|1}`. Photos rows are `(kind, ref)` = (table, entry id/email); R2 keys are `<table>/<uuid>.jpg` (never an email).
 - `schema.sql` - D1 tables + seed admin (idempotent).
 - Bindings: D1 `DB` (`mvb-db`), R2 `PHOTOS` (`mvb-photos`), vars `TEAM_DOMAIN`, `ACCESS_AUD`.
 
@@ -22,7 +23,7 @@ Local dev: `.dev.vars` `DEV_EMAIL=...` is used as identity, only when the reques
 ```
 npx -y wrangler@latest d1 execute mvb-db --local --file=schema.sql
 echo DEV_EMAIL=henrybonikowsky@gmail.com > .dev.vars
-npx -y wrangler@latest dev            # http://localhost:8787, /admin
+npx -y wrangler@latest dev --local-upstream localhost:8787   # keeps the request host = localhost (routes would otherwise make it the real domain, and DEV_EMAIL is ignored)
 node test/jwt.check.mjs               # JWT verify, DEV_EMAIL host gate, input validation
 bash test/smoke.sh                    # needs wrangler dev running; exercises every API route, cleans up after itself
 ```
