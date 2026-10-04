@@ -1,0 +1,28 @@
+<svg width="320" height="320" viewBox="0 0 320 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+
+<g id="Ball v2 (draft)">
+<g clip-path="url(#clip0_0_1)">
+<rect width="320" height="320" rx="160" fill="white"/>
+<g id="panel 0">
+<path id="Vector" d="M160 160C172 100 150 40 95 0" stroke="#991226" stroke-width="13" stroke-linecap="round"/>
+<path id="Vector_2" d="M196 182C222 120 205 50 160 -5" stroke="#991226" stroke-width="11" stroke-linecap="round"/>
+<path id="Vector_3" d="M236 205C268 140 255 60 222 5" stroke="#991226" stroke-width="11" stroke-linecap="round"/>
+</g>
+<g id="panel 1">
+<path id="Vector_4" d="M160 160C205.961 200.392 268.923 211.34 331.064 183.708" stroke="#991226" stroke-width="13" stroke-linecap="round"/>
+<path id="Vector_5" d="M122.947 180.177C163.641 233.694 232.763 253.971 302.894 242.5" stroke="#991226" stroke-width="11" stroke-linecap="round"/>
+<path id="Vector_6" d="M83.0288 203.318C123.32 263.531 199.102 292.272 263.234 291.194" stroke="#991226" stroke-width="11" stroke-linecap="round"/>
+</g>
+<g id="panel 2">
+<path id="Vector_7" d="M160 160C102.039 179.608 61.0771 228.66 53.936 296.292" stroke="#991226" stroke-width="13" stroke-linecap="round"/>
+<path id="Vector_8" d="M161.053 117.823C94.3591 126.306 42.2374 176.029 17.106 242.5" stroke="#991226" stroke-width="11" stroke-linecap="round"/>
+<path id="Vector_9" d="M160.971 71.6821C88.6795 76.4693 25.8975 127.728 -5.23389 183.806" stroke="#991226" stroke-width="11" stroke-linecap="round"/>
+</g>
+</g>
+</g>
+<defs>
+<clipPath id="clip0_0_1">
+<rect width="320" height="320" rx="160" fill="white"/>
+</clipPath>
+</defs>
+<circle cx="160" cy="160" r="152" stroke="#991226" stroke-width="16"/></svg>

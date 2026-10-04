@@ -1,51 +1,39 @@
 <!doctype html>
-<html lang="en" data-v="a">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Whitworth Men's Volleyball</title>
 <meta name="description" content="Whitworth Men's Volleyball - schedule, roster and contact.">
-<link rel="icon" href="assets/logo-b.svg">
+<link rel="icon" href="assets/ball.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800&family=Inter:wght@400;600&display=swap" rel="stylesheet">
 <style>
-  :root { --cr:#99122a; --bk:#141416; --wh:#fff; --mut:#5b5b62; --bg:#fff; --fg:var(--bk); --accent:var(--cr); --card:#f4f4f5; }
-  [data-v="b"] { --bg:var(--bk); --fg:#f4f4f5; --mut:#a1a1aa; --card:#1f1f23; }
-  [data-v="c"] { --bg:#faf7f5; --card:#fff; }
+  :root { --cr:#99122a; --bk:#141416; --wh:#fff; --mut:#5b5b62; --bg:#faf7f5; --card:#fff; }
   * { box-sizing:border-box; margin:0; }
-  body { font:16px/1.6 Inter,system-ui,sans-serif; background:var(--bg); color:var(--fg); }
-  h1,h2,nav a,.btn { font-family:"Barlow Condensed",sans-serif; text-transform:uppercase; letter-spacing:.04em; }
+  body { font:16px/1.6 Inter,system-ui,sans-serif; background:var(--bg); color:var(--bk); }
+  h2,nav a,.btn { font-family:"Barlow Condensed",sans-serif; text-transform:uppercase; letter-spacing:.04em; }
   .wrap { max-width:960px; margin:0 auto; padding:0 16px; }
   nav { display:flex; gap:20px; justify-content:center; flex-wrap:wrap; padding:16px; font-weight:600; }
-  nav a { color:inherit; text-decoration:none; } nav a:hover { color:var(--accent); }
-  .hero { text-align:center; padding:48px 16px 64px; }
-  .hero img { display:none; width:min(320px,80vw); height:auto; }
-  [data-v="a"] .logo-a, [data-v="b"] .logo-b, [data-v="c"] .logo-c { display:inline-block; }
-  [data-v="b"] .logo-b { border-radius:24px; }
-  [data-v="c"] .hero { background:var(--cr); color:var(--wh); }
-  [data-v="c"] .logo-c { width:min(420px,90vw); }
-  .hero p { color:var(--mut); margin-top:12px; } [data-v="c"] .hero p { color:#f3d7dc; }
-  .btn { display:inline-block; margin-top:20px; padding:10px 28px; background:var(--accent); color:var(--wh); text-decoration:none; font-weight:800; font-size:20px; border-radius:6px; }
-  [data-v="c"] .btn { background:var(--wh); color:var(--cr); }
+  nav a { color:inherit; text-decoration:none; } nav a:hover { color:var(--cr); }
+  .hero { text-align:center; padding:48px 16px 64px; background:var(--cr); color:var(--wh); }
+  .hero img { width:min(420px,90vw); height:auto; }
+  .hero p { color:#f3d7dc; margin-top:12px; }
+  .btn { display:inline-block; margin-top:20px; padding:10px 28px; background:var(--wh); color:var(--cr); text-decoration:none; font-weight:800; font-size:20px; border-radius:6px; }
   section { padding:48px 0; } h2 { font-size:40px; font-weight:800; margin-bottom:16px; }
-  h2::after { content:""; display:block; width:56px; height:5px; background:var(--accent); margin-top:6px; }
+  h2::after { content:""; display:block; width:56px; height:5px; background:var(--cr); margin-top:6px; }
   .grid { display:grid; gap:16px; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); }
   .card { background:var(--card); padding:20px; border-radius:10px; }
   .card b { display:block; font-family:"Barlow Condensed",sans-serif; font-size:22px; text-transform:uppercase; }
   .muted { color:var(--mut); }
-  a { color:var(--accent); } [data-v="b"] a { color:#ff5a72; }
+  a { color:var(--cr); }
   footer { text-align:center; padding:32px 16px; color:var(--mut); font-size:14px; }
-  /* design picker, remove once a design is chosen */
-  .pick { position:fixed; right:12px; bottom:12px; display:flex; gap:6px; background:#141416; padding:6px; border-radius:8px; font:600 13px Inter,sans-serif; z-index:9; }
-  .pick a { color:#fff; text-decoration:none; padding:4px 10px; border-radius:5px; } .pick a.on { background:var(--cr); }
 </style>
 </head>
 <body>
 <nav><a href="#schedule">Schedule</a><a href="#roster">Roster</a><a href="#contact">Contact</a></nav>
 <header class="hero">
-  <img class="logo-a" src="assets/logo-a.svg" alt="Whitworth MVB">
-  <img class="logo-b" src="assets/logo-b.svg" alt="Whitworth MVB">
-  <img class="logo-c" src="assets/logo-c.svg" alt="Whitworth Men's Volleyball">
+  <img src="assets/logo-c.svg" alt="Whitworth Men's Volleyball">
   <p>Whitworth University Men's Volleyball</p>
   <a class="btn" href="#contact">Get in touch</a>
 </header>
@@ -67,11 +55,5 @@
   </section>
 </main>
 <footer>Whitworth Men's Volleyball · whitworthmvb.com</footer>
-<div class="pick" aria-label="Design options"><a href="?v=a">Option A</a><a href="?v=b">Option B</a><a href="?v=c">Option C</a></div>
-<script>
-  const v = new URLSearchParams(location.search).get('v');
-  if (['a','b','c'].includes(v)) document.documentElement.dataset.v = v;
-  for (const a of document.querySelectorAll('.pick a')) a.classList.toggle('on', a.href.endsWith('v=' + document.documentElement.dataset.v));
-</script>
 </body>
 </html>
