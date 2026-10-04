@@ -6,16 +6,15 @@
   "preview_urls": false,
   "assets": { "directory": "public" },
   "d1_databases": [
-    { "binding": "DB", "database_name": "mvb-db", "database_id": "REPLACE_WITH_D1_DATABASE_ID" }
+    { "binding": "DB", "database_name": "mvb-db", "database_id": "b4ada298-7b43-4fc3-88fd-d4d0d1d15b02" }
   ],
   "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "mvb-photos" }],
   "vars": {
-    "TEAM_DOMAIN": "REPLACE_WITH_TEAM.cloudflareaccess.com",
-    "ACCESS_AUD": "REPLACE_WITH_ACCESS_APPLICATION_AUD_TAG"
-  }
-  // Custom domains: wire at deploy time, e.g.
-  // "routes": [
-  //   { "pattern": "whitworthmensvolleyball.com", "custom_domain": true },
-  //   { "pattern": "www.whitworthmensvolleyball.com", "custom_domain": true }
-  // ]
+    "TEAM_DOMAIN": "whitworthmvb.cloudflareaccess.com",
+    "ACCESS_AUD": "69a401ba2f37ec3d73890973d50575d656e1d329f43d491fdacabcc89456b285"
+  },
+  "routes": [
+    { "pattern": "whitworthmensvolleyball.com", "custom_domain": true },
+    { "pattern": "www.whitworthmensvolleyball.com", "custom_domain": true }
+  ]
 }
