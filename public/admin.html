@@ -69,7 +69,7 @@ const TABS = {
     show: (p) => [`${p.number ? '#' + p.number + ' ' : ''}${p.name}`, [p.position, p.year, 'sort ' + p.sort].filter(Boolean).join(' · ')] },
   announcements: { label: 'Announcements', fields: [['date', 'Date', 'date', 1], ['title', 'Title', 'text', 1], ['body', 'Text', 'textarea']],
     show: (a) => [`${a.date} - ${a.title}`, a.body] },
-  officers: { label: 'Officers', pk: 'email', fields: [['email', 'Email (their Access login)', 'email', 1], ['name', 'Name', 'text', 1], ['title', 'Title (e.g. President)', 'text'], ['role', 'Role', ['editor', 'admin'], 1]],
+  officers: { label: 'Officers', pk: 'email', fields: [['email', 'Email (their Access login)', 'email', 1], ['name', 'Name', 'text', 1], ['title', 'Title (e.g. President) - leave empty to hide from the public site', 'text'], ['role', 'Role', ['editor', 'admin'], 1]],
     show: (o) => [`${o.name}${o.title ? ' - ' + o.title : ''}`, `${o.email} · ${o.role}`] },
 };
 let tab = 'games', editing = null, rows = [];

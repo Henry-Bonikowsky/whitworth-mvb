@@ -94,7 +94,7 @@ async function publicData(env) {
     q('SELECT * FROM games WHERE our_score IS NOT NULL ORDER BY date DESC, time DESC'),
     q(`SELECT * FROM roster ORDER BY ${T.roster.order}`),
     q(`SELECT * FROM announcements ORDER BY ${T.announcements.order} LIMIT 10`),
-    q('SELECT name, title FROM officers ORDER BY role, name'),
+    q("SELECT name, title FROM officers WHERE title != '' ORDER BY role, name"),
     q('SELECT game_id, key FROM photos ORDER BY sort, id'),
   ])).map((r) => r.results);
   for (const g of res) g.photos = ph.filter((p) => p.game_id === g.id).map((p) => `/photos/${p.key}`);
