@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MVB Admin</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="assets/ball.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root { --cr:#99122a; --bk:#141416; --wh:#fff; --mut:#5b5b62; --bg:#faf7f5; --card:#fff; }
+  * { box-sizing:border-box; margin:0; }
+  body { font:16px/1.5 Inter,system-ui,sans-serif; background:var(--bg); color:var(--bk); }
+  h1,h2,button,.tabs a { font-family:"Barlow Condensed",sans-serif; text-transform:uppercase; letter-spacing:.04em; }
+  header { background:var(--cr); color:var(--wh); padding:12px 16px; display:flex; flex-wrap:wrap; gap:4px 16px; align-items:center; }
+  header h1 { font-size:26px; margin-right:auto; } header a { color:var(--wh); }
+  .wrap { max-width:860px; margin:0 auto; padding:16px; }
+  .tabs { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+  button { font-weight:600; font-size:17px; border:2px solid var(--cr); background:var(--wh); color:var(--cr); border-radius:6px; padding:4px 14px; cursor:pointer; }
+  button.on, button.primary { background:var(--cr); color:var(--wh); }
+  button.sm { font-size:15px; padding:0 8px; }
+  form, .row { background:var(--card); border-radius:10px; padding:16px; }
+  form { display:grid; gap:10px; grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr)); margin-bottom:16px; }
+  label { display:grid; font-size:14px; color:var(--mut); }
+  label.wide, form .acts { grid-column:1/-1; }
+  input, select, textarea { font:inherit; padding:6px 8px; border:1px solid #ccc; border-radius:6px; width:100%; color:var(--bk); }
+  textarea { min-height:90px; }
+  .acts { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .list { display:grid; gap:10px; }
+  .row { display:grid; gap:8px; overflow-wrap:anywhere; }
+  .muted { color:var(--mut); }
+  #msg { padding:10px 14px; border-radius:6px; margin-bottom:12px; background:#fde8eb; color:var(--cr); font-weight:600; }
+  #msg.ok { background:#e6f4ea; color:#1d7a3a; }
+  .thumbs { display:flex; flex-wrap:wrap; gap:8px; }
+  .thumbs figure { display:grid; gap:4px; }
+  .thumbs img { width:110px; height:74px; object-fit:cover; border-radius:6px; }
+</style>
+</head>
+<body>
+<header><h1>MVB Admin</h1><span id="who"></span><a href="/">View site</a><a href="/cdn-cgi/access/logout">Log out</a></header>
+<main class="wrap">
+  <div id="msg" hidden></div>
+  <nav class="tabs" id="tabs"></nav>
+  <form id="form" hidden></form>
+  <div class="list" id="list"></div>
+</main>
+<script>
+// All data rendered via textContent / createElement - never innerHTML.
+const $ = (id) => document.getElementById(id);
+function el(tag, props, ...kids) { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; }
+const btn = (text, onclick, className = 'sm') => el('button', { type: 'button', textContent: text, onclick, className });
+
+function say(text, ok) { const m = $('msg'); m.textContent = text; m.className = ok ? 'ok' : ''; m.hidden = !text; if (text) m.scrollIntoView({ block: 'nearest' }); }
+async function api(path, opts = {}) {
+  let r;
+  try { r = await fetch('/api/admin/' + path, opts); } catch { throw new Error('Network error - your login may have expired, reload the page.'); }
+  const d = await r.json().catch(() => ({ error: `Error ${r.status} - try reloading the page.` }));
+  if (!r.ok) throw Object.assign(new Error(d.error || r.status), { status: r.status });
+  return d;
+}
+const send = (path, method, data) => api(path, { method, headers: { 'content-type': 'application/json' }, body: data && JSON.stringify(data) });
+
+// [field, label, input type | options, required]
+const TABS = {
+  games: { label: 'Games', fields: [['date', 'Date', 'date', 1], ['time', 'Time', 'time'], ['opponent', 'Opponent', 'text', 1], ['location', 'Location', 'text'], ['home_away', 'Home / away', ['home', 'away', 'neutral'], 1], ['our_score', 'Our score (blank if not played)', 'number'], ['their_score', 'Their score', 'number'], ['notes', 'Notes', 'textarea']],
+    show: (g) => [`${g.date}${g.time ? ' ' + g.time : ''} - ${g.home_away === 'away' ? '@' : 'vs'} ${g.opponent}`, [g.our_score != null ? `Final ${g.our_score}-${g.their_score}` : 'Upcoming', g.location, g.photos.length ? g.photos.length + ' photos' : ''].filter(Boolean).join(' · ')] },
+  roster: { label: 'Roster', fields: [['name', 'Name', 'text', 1], ['number', 'Number', 'text'], ['position', 'Position', 'text'], ['year', 'Year', 'text'], ['sort', 'Sort order (low first)', 'number']],
+    show: (p) => [`${p.number ? '#' + p.number + ' ' : ''}${p.name}`, [p.position, p.year, 'sort ' + p.sort].filter(Boolean).join(' · ')] },
+  announcements: { label: 'Announcements', fields: [['date', 'Date', 'date', 1], ['title', 'Title', 'text', 1], ['body', 'Text', 'textarea']],
+    show: (a) => [`${a.date} - ${a.title}`, a.body] },
+  officers: { label: 'Officers', pk: 'email', fields: [['email', 'Email (their Access login)', 'email', 1], ['name', 'Name', 'text', 1], ['title', 'Title (e.g. President)', 'text'], ['role', 'Role', ['editor', 'admin'], 1]],
+    show: (o) => [`${o.name}${o.title ? ' - ' + o.title : ''}`, `${o.email} · ${o.role}`] },
+};
+let tab = 'games', editing = null, rows = [];
+const openPhotos = new Set();
+
+function tabs(me) {
+  $('tabs').replaceChildren(...Object.entries(TABS).filter(([k]) => k !== 'officers' || me.role === 'admin')
+    .map(([k, t]) => btn(t.label, () => { tab = k; editing = null; say(''); load(); }, k === tab ? 'on' : '')));
+}
+
+function form() {
+  const t = TABS[tab], f = $('form'), row = editing || {};
+  f.replaceChildren(...t.fields.map(([k, label, type, req]) => {
+    const input = Array.isArray(type) ? el('select', {}, ...type.map((o) => el('option', { value: o, textContent: o })))
+      : el(type === 'textarea' ? 'textarea' : 'input', type === 'textarea' ? {} : { type, ...(type === 'number' ? (k === 'sort' ? { step: 1 } : { min: 0, step: 1 }) : {}) });
+    Object.assign(input, { name: k, required: !!req }, Array.isArray(type) && row[k] == null ? {} : { value: row[k] ?? (k === 'date' ? new Date().toLocaleDateString('en-CA') : '') });
+    if (editing && k === t.pk) input.disabled = true;
+    return el('label', { className: type === 'textarea' ? 'wide' : '' }, label + (req ? ' *' : ''), input);
+  }), el('div', { className: 'acts' }, el('button', { className: 'primary', textContent: editing ? 'Save changes' : 'Add' }), editing ? btn('Cancel', () => { editing = null; form(); }) : ''));
+  f.hidden = false;
+  f.onsubmit = async (e) => {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(f));
+    try {
+      if (editing) await send(`${tab}/${encodeURIComponent(editing[t.pk || 'id'])}`, 'PUT', data);
+      else await send(tab, 'POST', data);
+      say(editing ? 'Saved.' : 'Added.', true);
+      editing = null;
+      await load();
+    } catch (err) { say(err.message); }
+  };
+}
+
+function photos(g) {
+  const input = el('input', { type: 'file', accept: 'image/*', multiple: true });
+  input.onchange = async () => {
+    const files = [...input.files];
+    for (const [i, file] of files.entries()) {
+      say(`Uploading photo ${i + 1} of ${files.length}...`, true);
+      try { await api(`games/${g.id}/photos`, { method: 'POST', headers: { 'content-type': 'image/jpeg' }, body: await shrink(file) }); }
+      catch (err) { say(`${file.name}: ${err.message}`); return load(); }
+    }
+    say(`Uploaded ${files.length} photo(s).`, true);
+    load();
+  };
+  const act = (fn) => async () => { try { await fn(); await load(); } catch (err) { say(err.message); } };
+  return el('div', { className: 'row' }, el('label', {}, 'Add photos (resized automatically)', input),
+    el('div', { className: 'thumbs' }, ...g.photos.map((p, i) => el('figure', {}, el('img', { src: p.url, alt: `Photo ${i + 1}`, loading: 'lazy' }),
+      el('div', { className: 'acts' },
+        btn('↑', act(() => send(`photos/${p.id}/move`, 'POST', { dir: -1 }))),
+        btn('↓', act(() => send(`photos/${p.id}/move`, 'POST', { dir: 1 }))),
+        btn('✕', act(async () => { if (confirm('Delete this photo?')) await send(`photos/${p.id}`, 'DELETE'); })))))));
+}
+
+// Resize to max 1600px long edge, JPEG q0.82.
+async function shrink(file) {
+  const img = await createImageBitmap(file);
+  const s = Math.min(1, 1600 / Math.max(img.width, img.height));
+  const c = el('canvas', { width: Math.round(img.width * s), height: Math.round(img.height * s) });
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  return new Promise((ok, no) => c.toBlob((b) => b ? ok(b) : no(new Error('Could not read image')), 'image/jpeg', 0.82));
+}
+
+async function load() {
+  const t = TABS[tab];
+  tabs(me);
+  try { rows = await api(tab); } catch (err) { return say(err.message); }
+  form();
+  $('list').replaceChildren(...(rows.length ? rows : [null]).map((r) => {
+    if (!r) return el('p', { className: 'muted', textContent: 'Nothing here yet.' });
+    const id = r[t.pk || 'id'], [title, sub] = t.show(r);
+    const acts = el('div', { className: 'acts' },
+      btn('Edit', () => { editing = r; form(); $('form').scrollIntoView(); }),
+      btn('Delete', async () => {
+        if (!confirm(`Delete "${title}"?` + (tab === 'games' && r.photos.length ? ' Its photos are deleted too.' : ''))) return;
+        try { await send(`${tab}/${encodeURIComponent(id)}`, 'DELETE'); say('Deleted.', true); load(); } catch (err) { say(err.message); }
+      }));
+    if (tab === 'games') acts.append(btn(openPhotos.has(id) ? 'Hide photos' : 'Photos', () => { openPhotos.has(id) ? openPhotos.delete(id) : openPhotos.add(id); load(); }));
+    return el('div', { className: 'row' }, el('strong', { textContent: title }), el('div', { className: 'muted', textContent: sub }), acts,
+      tab === 'games' && openPhotos.has(id) ? photos(r) : '');
+  }));
+}
+
+let me;
+api('me').then((m) => {
+  me = m;
+  $('who').textContent = `${m.email} (${m.role})`;
+  load();
+}).catch((err) => say(err.status === 403 ? "You're signed in, but your email isn't on the officer list. Ask an admin to add you." : err.message));
+</script>
+</body>
+</html>

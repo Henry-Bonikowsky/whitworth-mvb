@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Whitworth Men's Volleyball</title>
+<meta name="description" content="Whitworth Men's Volleyball - schedule, results, roster and contact.">
+<link rel="icon" href="assets/ball.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root { --cr:#99122a; --bk:#141416; --wh:#fff; --mut:#5b5b62; --bg:#faf7f5; --card:#fff; }
+  * { box-sizing:border-box; margin:0; }
+  body { font:16px/1.6 Inter,system-ui,sans-serif; background:var(--bg); color:var(--bk); overflow-x:hidden; }
+  h2,nav a,.btn,.card b,.badge { font-family:"Barlow Condensed",sans-serif; text-transform:uppercase; letter-spacing:.04em; }
+  .wrap { max-width:960px; margin:0 auto; padding:0 16px; }
+  nav { display:flex; gap:8px 20px; justify-content:center; flex-wrap:wrap; padding:16px; font-weight:600; }
+  nav a { color:inherit; text-decoration:none; } nav a:hover { color:var(--cr); }
+  .hero { text-align:center; padding:48px 16px 64px; background:var(--cr); color:var(--wh); }
+  .hero img { width:min(420px,90vw); height:auto; }
+  .hero p { color:#f3d7dc; margin-top:12px; }
+  .btn { display:inline-block; margin-top:20px; padding:10px 28px; background:var(--wh); color:var(--cr); text-decoration:none; font-weight:800; font-size:20px; border-radius:6px; }
+  section { padding:48px 0; } h2 { font-size:40px; font-weight:800; margin-bottom:16px; }
+  h2::after { content:""; display:block; width:56px; height:5px; background:var(--cr); margin-top:6px; }
+  .grid { display:grid; gap:16px; grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr)); }
+  .list { display:grid; gap:12px; }
+  .card { background:var(--card); padding:20px; border-radius:10px; min-width:0; overflow-wrap:anywhere; }
+  .card b { display:block; font-size:22px; }
+  .body { white-space:pre-line; margin-top:6px; }
+  .muted { color:var(--mut); }
+  .badge { display:inline-block; min-width:28px; text-align:center; padding:0 8px; border-radius:4px; color:var(--wh); background:var(--mut); font-weight:800; margin-right:8px; }
+  .W { background:#1d7a3a; } .L { background:var(--cr); }
+  .shows { position:relative; margin-top:12px; }
+  .strip { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; border-radius:8px; scrollbar-width:none; }
+  .strip:focus-visible { outline:3px solid var(--cr); outline-offset:2px; }
+  .strip img { flex:0 0 100%; width:100%; aspect-ratio:3/2; object-fit:cover; scroll-snap-align:center; background:#eee; }
+  .shows button { position:absolute; top:50%; transform:translateY(-50%); border:0; width:40px; height:40px; border-radius:50%; background:rgba(20,20,22,.6); color:#fff; font-size:22px; cursor:pointer; }
+  .shows .prev { left:8px; } .shows .next { right:8px; }
+  a { color:var(--cr); }
+  footer { text-align:center; padding:32px 16px; color:var(--mut); font-size:14px; }
+</style>
+</head>
+<body>
+<nav><a href="#news" hidden>News</a><a href="#schedule">Schedule</a><a href="#results">Results</a><a href="#roster">Roster</a><a href="#officers">Officers</a><a href="#contact">Contact</a></nav>
+<header class="hero">
+  <img src="assets/logo-c.svg" alt="Whitworth Men's Volleyball">
+  <p>Whitworth University Men's Volleyball</p>
+  <a class="btn" href="#contact">Get in touch</a>
+</header>
+<main class="wrap">
+  <section id="news" hidden><h2>Announcements</h2><div class="list"></div></section>
+  <section id="schedule"><h2>Schedule</h2><div class="list"><p class="muted">The season schedule is coming soon.</p></div></section>
+  <section id="results"><h2>Results</h2><div class="list"><p class="muted">Results are coming soon.</p></div></section>
+  <section id="roster"><h2>Roster</h2><div class="grid"><p class="muted">The roster is coming soon.</p></div></section>
+  <section id="officers"><h2>Officers</h2><div class="grid"><p class="muted">Club officers are coming soon.</p></div></section>
+  <section id="contact">
+    <h2>Contact</h2>
+    <div class="grid">
+      <div class="card"><b>Email</b><a href="mailto:team@whitworthmensvolleyball.com">team@whitworthmensvolleyball.com</a></div>
+      <div class="card"><b>Interested in joining?</b>Send us an email.</div>
+    </div>
+  </section>
+</main>
+<footer>Whitworth Men's Volleyball · whitworthmvb.com</footer>
+<script>
+// All user content goes in via textContent / createElement - never innerHTML.
+function el(tag, cls, text, ...kids) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null && text !== '') e.textContent = text;
+  e.append(...kids);
+  return e;
+}
+const day = (d) => new Date(d + 'T12:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+const clock = (t) => t ? new Date('2000-01-01T' + t).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '';
+const where = (g) => [g.home_away === 'home' ? 'Home' : g.home_away === 'away' ? 'Away' : 'Neutral', g.location].filter(Boolean).join(' · ');
+const fill = (id, items, make) => { if (items.length) document.querySelector(`#${id} > div`).replaceChildren(...items.map(make)); };
+
+function slideshow(urls, label) {
+  const strip = el('div', 'strip');
+  strip.tabIndex = 0; // arrow keys scroll it
+  strip.setAttribute('aria-label', `${label} photos`);
+  urls.forEach((u, i) => { const img = el('img'); img.src = u; img.loading = 'lazy'; img.alt = `${label} photo ${i + 1} of ${urls.length}`; strip.append(img); });
+  const box = el('div', 'shows', null, strip);
+  if (urls.length > 1) for (const [cls, dir, txt] of [['prev', -1, '‹'], ['next', 1, '›']]) {
+    const b = el('button', cls, txt);
+    b.type = 'button';
+    b.setAttribute('aria-label', dir < 0 ? 'Previous photo' : 'Next photo');
+    b.onclick = () => strip.scrollBy({ left: dir * strip.clientWidth, behavior: 'smooth' });
+    box.append(b);
+  }
+  return box;
+}
+
+fetch('/api/public').then((r) => r.json()).then((d) => {
+  if (d.announcements.length) {
+    document.getElementById('news').hidden = document.querySelector('nav a[href="#news"]').hidden = false;
+    fill('news', d.announcements, (a) => el('div', 'card', null, el('b', '', a.title), el('div', 'muted', day(a.date)), el('div', 'body', a.body)));
+  }
+  fill('schedule', d.upcoming, (g) => el('div', 'card', null,
+    el('b', '', (g.home_away === 'away' ? '@ ' : 'vs ') + g.opponent),
+    el('div', '', [day(g.date), clock(g.time)].filter(Boolean).join(' · ')),
+    el('div', 'muted', where(g)), el('div', 'body muted', g.notes)));
+  fill('results', d.results, (g) => {
+    const r = g.our_score > g.their_score ? 'W' : g.our_score < g.their_score ? 'L' : 'T';
+    const c = el('div', 'card', null,
+      el('b', '', null, el('span', 'badge ' + r, r), `${g.our_score}-${g.their_score} ${g.home_away === 'away' ? '@' : 'vs'} ${g.opponent}`),
+      el('div', 'muted', [day(g.date), where(g)].join(' · ')), el('div', 'body muted', g.notes));
+    if (g.photos.length) c.append(slideshow(g.photos, `vs ${g.opponent}`));
+    return c;
+  });
+  fill('roster', d.roster, (p) => el('div', 'card', null, el('b', '', (p.number ? '#' + p.number + ' ' : '') + p.name), el('div', 'muted', [p.position, p.year].filter(Boolean).join(' · '))));
+  fill('officers', d.officers, (o) => el('div', 'card', null, el('b', '', o.name), el('div', 'muted', o.title)));
+}).catch(() => {});
+</script>
+</body>
+</html>
