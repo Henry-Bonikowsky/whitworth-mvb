@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Whitworth Men's Volleyball</title>
-<meta name="description" content="Whitworth Men's Volleyball - schedule, results, roster and contact.">
+<title>Whitworth Men's Volleyball Club</title>
+<meta name="description" content="Whitworth Men's Volleyball Club, a student-run club (not a varsity team) - schedule, results, roster and contact.">
 <link rel="icon" href="assets/ball.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;800&family=Inter:wght@400;600&display=swap" rel="stylesheet">
@@ -19,6 +19,7 @@
   .hero { text-align:center; padding:48px 16px 64px; background:var(--cr); color:var(--wh); }
   .hero img { width:min(420px,90vw); height:auto; }
   .hero p { color:#f3d7dc; margin-top:12px; }
+  .hero .club { color:var(--wh); font:800 34px/1.1 "Barlow Condensed",sans-serif; text-transform:uppercase; letter-spacing:.06em; margin-top:16px; }
   .btn { display:inline-block; margin-top:20px; padding:10px 28px; background:var(--wh); color:var(--cr); text-decoration:none; font-weight:800; font-size:20px; border-radius:6px; }
   section { padding:48px 0; } h2 { font-size:40px; font-weight:800; margin-bottom:16px; }
   h2::after { content:""; display:block; width:56px; height:5px; background:var(--cr); margin-top:6px; }
@@ -44,8 +45,9 @@
 <body>
 <nav><a href="#news" hidden>News</a><a href="#schedule">Schedule</a><a href="#results">Results</a><a href="#roster">Roster</a><a href="#officers">Officers</a><a href="#contact">Contact</a></nav>
 <header class="hero">
-  <img src="assets/logo-c.svg" alt="Whitworth Men's Volleyball">
-  <p>Whitworth University Men's Volleyball</p>
+  <img src="assets/logo-c.svg" alt="Whitworth Men's Volleyball Club">
+  <p class="club">Men's Volleyball Club</p>
+  <p>A student-run club at Whitworth University, not an official varsity team.</p>
   <a class="btn" href="#contact">Get in touch</a>
 </header>
 <main class="wrap">
@@ -58,11 +60,11 @@
     <h2>Contact</h2>
     <div class="grid">
       <div class="card"><b>Email</b><a href="mailto:team@whitworthmensvolleyball.com">team@whitworthmensvolleyball.com</a></div>
-      <div class="card"><b>Interested in joining?</b>Send us an email.</div>
+      <div class="card"><b>Interested in joining the club?</b>Send us an email.</div>
     </div>
   </section>
 </main>
-<footer>Whitworth Men's Volleyball · whitworthmvb.com</footer>
+<footer>Whitworth Men's Volleyball Club · a student club, not affiliated with Whitworth Athletics · whitworthmvb.com</footer>
 <script>
 // All user content goes in via textContent / createElement - never innerHTML.
 function el(tag, cls, text, ...kids) {
