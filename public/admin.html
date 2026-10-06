@@ -157,7 +157,12 @@ api('me').then((m) => {
   me = m;
   $('who').textContent = `${m.email} (${m.role})`;
   load();
-}).catch((err) => say(err.status === 403 ? "You're signed in, but your email isn't on the officer list. Ask an admin to add you." : err.message));
+}).catch((err) => {
+  if (err.status !== 403) return say(err.message);
+  const who = (err.message.match(/^Not an officer: (.+)$/) || [])[1];
+  say(`You're signed in${who ? ' as ' + who : ''}, but that email isn't on the officer list. Wrong email? Sign out and try again; otherwise ask an admin to add you.`);
+  $('msg').append(' ', el('a', { href: '/cdn-cgi/access/logout', textContent: 'Sign out' }));
+});
 </script>
 </body>
 </html>

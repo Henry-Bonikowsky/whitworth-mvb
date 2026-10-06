@@ -81,7 +81,7 @@ async function officer(req, env) {
   if (!email) fail(401, 'Not signed in');
   email = email.toLowerCase();
   const me = await env.DB.prepare('SELECT email, name, title, role FROM officers WHERE email = ?').bind(email).first();
-  if (!me) fail(403, 'Not an officer');
+  if (!me) fail(403, `Not an officer: ${email}`);
   return me;
 }
 
